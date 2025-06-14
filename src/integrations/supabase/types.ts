@@ -9,6 +9,48 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_api_keys: {
+        Row: {
+          api_key: string
+          created_at: string
+          display_name: string
+          enabled: boolean
+          id: string
+          model: string | null
+          name: string
+          provider: string
+          requests_limit: number | null
+          requests_used: number | null
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          display_name: string
+          enabled?: boolean
+          id?: string
+          model?: string | null
+          name: string
+          provider: string
+          requests_limit?: number | null
+          requests_used?: number | null
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          display_name?: string
+          enabled?: boolean
+          id?: string
+          model?: string | null
+          name?: string
+          provider?: string
+          requests_limit?: number | null
+          requests_used?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       api_keys: {
         Row: {
           created_at: string
@@ -113,6 +155,90 @@ export type Database = {
           },
         ]
       }
+      github_tokens: {
+        Row: {
+          commits_count: number | null
+          created_at: string
+          enabled: boolean
+          id: string
+          last_commit: string | null
+          name: string
+          repo_name: string | null
+          repo_url: string | null
+          token: string
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          commits_count?: number | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_commit?: string | null
+          name: string
+          repo_name?: string | null
+          repo_url?: string | null
+          token: string
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          commits_count?: number | null
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_commit?: string | null
+          name?: string
+          repo_name?: string | null
+          repo_url?: string | null
+          token?: string
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      netlify_api_keys: {
+        Row: {
+          api_key: string
+          created_at: string
+          deployments_count: number | null
+          enabled: boolean
+          id: string
+          last_deployment: string | null
+          name: string
+          site_id: string | null
+          site_name: string | null
+          site_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          deployments_count?: number | null
+          enabled?: boolean
+          id?: string
+          last_deployment?: string | null
+          name: string
+          site_id?: string | null
+          site_name?: string | null
+          site_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          deployments_count?: number | null
+          enabled?: boolean
+          id?: string
+          last_deployment?: string | null
+          name?: string
+          site_id?: string | null
+          site_name?: string | null
+          site_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       projects: {
         Row: {
           channel_logo: string | null
@@ -206,11 +332,48 @@ export type Database = {
         }
         Relationships: []
       }
+      youtube_api_keys: {
+        Row: {
+          api_key: string
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          quota_limit: number | null
+          quota_used: number | null
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          quota_limit?: number | null
+          quota_used?: number | null
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          quota_limit?: number | null
+          quota_used?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      generate_unique_provider_name: {
+        Args: { provider_type: string }
+        Returns: string
+      }
       update_system_status: {
         Args: Record<PropertyKey, never>
         Returns: undefined
