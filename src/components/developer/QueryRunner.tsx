@@ -42,10 +42,10 @@ const QueryRunner = () => {
       } else {
         // Check if the result contains an error
         if (data && typeof data === 'object' && 'error' in data) {
-          setError(data.error);
+          setError(String(data.error));
           toast({
             title: "SQL Error",
-            description: data.error,
+            description: String(data.error),
             variant: "destructive"
           });
         } else {
