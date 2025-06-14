@@ -7,11 +7,20 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ChannelInfo {
   name: string;
   logo: string;
   url: string;
+}
+
+interface SystemStatus {
+  service: string;
+  status: boolean;
+  last_checked: string;
+  error_message?: string;
+  response_time?: number;
 }
 
 const UserPortal = () => {
@@ -25,28 +34,65 @@ const UserPortal = () => {
     { type: 'bot', content: 'Hi! Please share your YouTube channel URL to get started with building your website.' }
   ]);
   const [newMessage, setNewMessage] = useState('');
-
-  // Real-time API status simulation
-  const [apiStatus, setApiStatus] = useState({
-    youtube: true,
-    openai: true,
+  const [systemStatus, setSystemStatus] = useState<Record<string, boolean>>({
+    youtube: false,
+    openai: false,
     github: false,
     supabase: true
   });
 
-  // Simulate real-time status updates
+  // Real-time system status monitoring
   useEffect(() => {
-    const interval = setInterval(() => {
-      setApiStatus(prev => ({
-        ...prev,
-        github: Math.random() > 0.3, // Simulate occasional GitHub issues
-        youtube: Math.random() > 0.1,
-        openai: Math.random() > 0.05,
-        supabase: Math.random() > 0.02
-      }));
-    }, 5000);
+    const fetchSystemStatus = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('system_status')
+          .select('service, status');
 
-    return () => clearInterval(interval);
+        if (error) {
+          console.error('Error fetching system status:', error);
+          return;
+        }
+
+        const statusMap = data.reduce((acc, item) => {
+          acc[item.service] = item.status;
+          return acc;
+        }, {} as Record<string, boolean>);
+
+        setSystemStatus(statusMap);
+      } catch (error) {
+        console.error('Error in fetchSystemStatus:', error);
+      }
+    };
+
+    fetchSystemStatus();
+
+    // Subscribe to real-time updates
+    const channel = supabase
+      .channel('system-status-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'system_status'
+        },
+        (payload) => {
+          console.log('System status changed:', payload);
+          if (payload.new && typeof payload.new === 'object') {
+            const newRecord = payload.new as SystemStatus;
+            setSystemStatus(prev => ({
+              ...prev,
+              [newRecord.service]: newRecord.status
+            }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   // Mock function to extract channel info from URL
@@ -105,7 +151,7 @@ const UserPortal = () => {
 
   const StatusIndicator = ({ status, label }: { status: boolean; label: string }) => (
     <div className="flex items-center gap-1" title={label}>
-      <div className={`w-2 h-2 rounded-full ${status ? 'bg-green-400 animate-pulse-dot' : 'bg-red-400'}`} />
+      <div className={`w-2 h-2 rounded-full ${status ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
       <span className="text-xs text-gray-400 hidden md:block">{label}</span>
     </div>
   );
@@ -202,7 +248,7 @@ const UserPortal = () => {
                 <CardContent>
                   <div className="space-y-3 text-sm">
                     <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse-dot"></div>
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                       <span className="text-gray-300">Website deployed successfully</span>
                       <span className="text-xs text-gray-500 ml-auto">2h ago</span>
                     </div>
@@ -451,10 +497,10 @@ export default YourWebsite;`}
             <div className="flex items-center gap-4">
               {/* Service Status */}
               <div className="flex items-center gap-3 px-3 py-1 bg-white/5 rounded-full border border-gray-800">
-                <StatusIndicator status={apiStatus.youtube} label="YouTube" />
-                <StatusIndicator status={apiStatus.openai} label="AI" />
-                <StatusIndicator status={apiStatus.github} label="GitHub" />
-                <StatusIndicator status={apiStatus.supabase} label="DB" />
+                <StatusIndicator status={systemStatus.youtube || false} label="YouTube" />
+                <StatusIndicator status={systemStatus.openai || false} label="AI" />
+                <StatusIndicator status={systemStatus.github || false} label="GitHub" />
+                <StatusIndicator status={systemStatus.supabase || false} label="DB" />
               </div>
 
               {/* GitHub Button */}
