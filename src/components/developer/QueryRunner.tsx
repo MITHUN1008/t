@@ -40,11 +40,21 @@ const QueryRunner = () => {
           variant: "destructive"
         });
       } else {
-        setResults(data);
-        toast({
-          title: "Success",
-          description: "Query executed successfully"
-        });
+        // Check if the result contains an error
+        if (data && typeof data === 'object' && 'error' in data) {
+          setError(data.error);
+          toast({
+            title: "SQL Error",
+            description: data.error,
+            variant: "destructive"
+          });
+        } else {
+          setResults(data);
+          toast({
+            title: "Success",
+            description: "Query executed successfully"
+          });
+        }
       }
     } catch (err: any) {
       setError(err.message);

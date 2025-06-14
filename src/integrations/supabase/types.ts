@@ -370,6 +370,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      execute_sql: {
+        Args: { sql_query: string }
+        Returns: Json
+      }
       generate_unique_provider_name: {
         Args: { provider_type: string }
         Returns: string
