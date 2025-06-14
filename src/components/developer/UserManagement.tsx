@@ -1,207 +1,270 @@
 
-import React, { useState } from 'react';
-import { Search, Plus, Edit, Trash2, User, Shield, UserCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, Search, Filter, MoreHorizontal, Shield, Mail, Calendar, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface User {
+  id: string;
+  email: string;
+  created_at: string;
+  last_sign_in_at: string;
+  email_confirmed_at: string;
+  role: string;
+  user_metadata: any;
+}
 
 const UserManagement = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [users] = useState([
-    {
-      id: 1,
-      name: 'John Doe',
-      email: 'john@example.com',
-      role: 'admin',
-      avatar: 'JD',
-      projects: 12,
-      status: 'active',
-      joinDate: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Jane Smith',
-      email: 'jane@example.com',
-      role: 'user',
-      avatar: 'JS',
-      projects: 8,
-      status: 'active',
-      joinDate: '2024-02-20'
-    },
-    {
-      id: 3,
-      name: 'Mike Johnson',
-      email: 'mike@example.com',
-      role: 'user',
-      avatar: 'MJ',
-      projects: 5,
-      status: 'inactive',
-      joinDate: '2024-03-10'
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase.auth.admin.listUsers();
+      
+      if (error) {
+        console.error('Error fetching users:', error);
+        return;
+      }
+
+      setUsers(data.users || []);
+    } catch (error) {
+      console.error('Error in fetchUsers:', error);
+    } finally {
+      setIsLoading(false);
     }
-  ]);
+  };
+
+  const handleUserAction = async (userId: string, action: string) => {
+    try {
+      let result;
+      
+      switch (action) {
+        case 'delete':
+          result = await supabase.auth.admin.deleteUser(userId);
+          break;
+        case 'invite':
+          // Implementation for invite user
+          break;
+        default:
+          return;
+      }
+
+      if (result?.error) {
+        toast({
+          title: "Error",
+          description: `Failed to ${action} user`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: `User ${action}d successfully`
+      });
+      
+      fetchUsers();
+    } catch (error) {
+      console.error(`Error ${action} user:`, error);
+    }
+  };
 
   const filteredUsers = users.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'bg-purple-600/20 text-purple-300 border-purple-500/30';
-      case 'user':
-        return 'bg-blue-600/20 text-blue-300 border-blue-500/30';
-      default:
-        return 'bg-gray-600/20 text-gray-300 border-gray-500/30';
+  const getUserStatus = (user: User) => {
+    if (user.email_confirmed_at) {
+      return { label: 'Active', color: 'bg-green-600/20 text-green-300 border-green-500/30' };
     }
+    return { label: 'Pending', color: 'bg-yellow-600/20 text-yellow-300 border-yellow-500/30' };
   };
 
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-600/20 text-green-300 border-green-500/30';
-      case 'inactive':
-        return 'bg-red-600/20 text-red-300 border-red-500/30';
-      default:
-        return 'bg-gray-600/20 text-gray-300 border-gray-500/30';
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-3xl font-bold text-white mb-2">User Management</h2>
+          <p className="text-gray-400">Loading users...</p>
+        </div>
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-3xl font-bold text-white mb-2">User Management</h2>
-          <p className="text-gray-400">Manage user accounts and permissions</p>
+          <p className="text-gray-400">Manage system users and their permissions</p>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button className="bg-purple-600 hover:bg-purple-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Add User
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="bg-black border-gray-800">
-            <DialogHeader>
-              <DialogTitle className="text-white">Add New User</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <Input placeholder="Full Name" className="bg-white/5 border-gray-700 text-white" />
-              <Input placeholder="Email Address" className="bg-white/5 border-gray-700 text-white" />
-              <Input placeholder="Role" className="bg-white/5 border-gray-700 text-white" />
-              <Button className="w-full bg-purple-600 hover:bg-purple-700">Create User</Button>
+        <Button className="bg-blue-600 hover:bg-blue-700">
+          <Mail className="h-4 w-4 mr-2" />
+          Invite User
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid md:grid-cols-4 gap-6">
+        <Card className="bg-white/5 border-gray-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <Users className="h-5 w-5 text-blue-400" />
             </div>
-          </DialogContent>
-        </Dialog>
+            <div>
+              <p className="text-lg font-bold text-white">{users.length}</p>
+              <p className="text-xs text-gray-400">Total Users</p>
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card className="bg-white/5 border-gray-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <Shield className="h-5 w-5 text-green-400" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-white">{users.filter(u => u.email_confirmed_at).length}</p>
+              <p className="text-xs text-gray-400">Active Users</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/5 border-gray-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <Activity className="h-5 w-5 text-yellow-400" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-white">{users.filter(u => !u.email_confirmed_at).length}</p>
+              <p className="text-xs text-gray-400">Pending Users</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white/5 border-gray-800">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-2">
+              <Calendar className="h-5 w-5 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-lg font-bold text-white">{users.filter(u => {
+                const lastSignIn = new Date(u.last_sign_in_at || 0);
+                const today = new Date();
+                const diffTime = Math.abs(today.getTime() - lastSignIn.getTime());
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return diffDays <= 7;
+              }).length}</p>
+              <p className="text-xs text-gray-400">Active This Week</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filters */}
       <Card className="bg-white/5 border-gray-800">
-        <CardContent className="p-4">
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <CardContent className="p-6">
+          <div className="flex gap-4 mb-6">
+            <div className="flex-1">
               <Input
-                placeholder="Search users by name or email..."
+                placeholder="Search users by email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 bg-white/5 border-gray-700 text-white"
+                className="bg-white/5 border-gray-700 text-white"
+                icon={<Search className="h-4 w-4" />}
               />
             </div>
-            <Button variant="outline" className="border-gray-700 text-gray-300">
+            <Button variant="outline" className="border-gray-700">
+              <Filter className="h-4 w-4 mr-2" />
               Filter
             </Button>
           </div>
+
+          {/* Users Table */}
+          <Table>
+            <TableHeader>
+              <TableRow className="border-gray-800">
+                <TableHead className="text-gray-300">User</TableHead>
+                <TableHead className="text-gray-300">Status</TableHead>
+                <TableHead className="text-gray-300">Created</TableHead>
+                <TableHead className="text-gray-300">Last Sign In</TableHead>
+                <TableHead className="text-gray-300">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.map((user) => {
+                const status = getUserStatus(user);
+                return (
+                  <TableRow key={user.id} className="border-gray-800">
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-blue-600/20 rounded-full flex items-center justify-center">
+                          <Users className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-white font-medium">{user.email}</p>
+                          <p className="text-gray-400 text-sm">{user.id.slice(0, 8)}...</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={status.color}>
+                        {status.label}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-gray-300">
+                      {new Date(user.created_at).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell className="text-gray-300">
+                      {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-gray-900 border-gray-800">
+                          <DropdownMenuItem 
+                            onClick={() => handleUserAction(user.id, 'delete')}
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            Delete User
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+
+          {filteredUsers.length === 0 && (
+            <div className="text-center py-12">
+              <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-400">No users found</p>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Users Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUsers.map((user) => (
-          <Card key={user.id} className="bg-white/5 border-gray-800">
-            <CardContent className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-purple-600/20 rounded-full flex items-center justify-center">
-                    <span className="text-purple-300 font-semibold">{user.avatar}</span>
-                  </div>
-                  <div>
-                    <h3 className="text-white font-semibold">{user.name}</h3>
-                    <p className="text-gray-400 text-sm">{user.email}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" className="border-gray-700 text-gray-300">
-                    <Edit className="h-3 w-3" />
-                  </Button>
-                  <Button size="sm" variant="outline" className="border-gray-700 text-gray-300 hover:text-red-400">
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Role:</span>
-                  <Badge className={getRoleBadgeColor(user.role)}>
-                    {user.role === 'admin' ? <Shield className="h-3 w-3 mr-1" /> : <User className="h-3 w-3 mr-1" />}
-                    {user.role}
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Status:</span>
-                  <Badge className={getStatusBadgeColor(user.status)}>
-                    <UserCheck className="h-3 w-3 mr-1" />
-                    {user.status}
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Projects:</span>
-                  <span className="text-white font-semibold">{user.projects}</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-400 text-sm">Joined:</span>
-                  <span className="text-gray-300 text-sm">{user.joinDate}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card className="bg-white/5 border-gray-800">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-white">{users.length}</p>
-            <p className="text-gray-400 text-sm">Total Users</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white/5 border-gray-800">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-green-400">{users.filter(u => u.status === 'active').length}</p>
-            <p className="text-gray-400 text-sm">Active Users</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white/5 border-gray-800">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-purple-400">{users.filter(u => u.role === 'admin').length}</p>
-            <p className="text-gray-400 text-sm">Admins</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-white/5 border-gray-800">
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-blue-400">{users.reduce((acc, u) => acc + u.projects, 0)}</p>
-            <p className="text-gray-400 text-sm">Total Projects</p>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 };
